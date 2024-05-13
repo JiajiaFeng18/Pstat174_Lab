@@ -1,0 +1,234 @@
+---
+title: "Lab 2"
+author: 'Jiajia Feng'
+date: ' `r Sys.Date()`'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggplot2)
+```
+
+
+## Question 1
+### b
+```{r}
+n <- 200
+delta1 <- 0.6
+delta2 <- 0.4
+
+set.seed(123)
+Z <- rnorm(n)
+
+# Simulate random walks
+X1 <- cumsum(Z) + delta1 * (1:n)
+X2 <- cumsum(Z) + delta2 * (1:n)
+
+data <- data.frame(
+  time = 1:n,
+  RandomWalk1 = X1,
+  RandomWalk2 = X2
+)
+
+ggplot(data, aes(x = time)) +
+  geom_line(aes(y = RandomWalk1, colour = "Random Walk 1 (delta = 0.6)")) +
+  geom_line(aes(y = RandomWalk2, colour = "Random Walk 2 (delta = 0.4)")) +
+  labs(title = "Random Walk Simulations",
+       x = "Time",
+       y = "Value") +
+  scale_colour_manual("", 
+                      breaks = c("Random Walk 1 (delta = 0.6)", "Random Walk 2 (delta = 0.4)"),
+                      values = c("blue", "red"))
+
+
+```
+### c
+```{r}
+"Both random walks should show a clear upward trend over time. 
+The series with delta = 0.6 will have a steeper slope compared to the series with delta = 0.4."
+"Around these two trend, fluctuations are random and centered around the trend line dictated by 
+the respective delta value."
+#non-stationary
+"The mean of the series increases over time due to the presence of the delta term.  
+This is visible as a consistent upward trend in the plot.
+The variance also increases over time because the effect of the white noise accumulates."
+"The random walk is inherently non-stationary.
+The mean is not constant over time due to the drift component (delta), 
+and the variance is not constant because the effects of the shocks accumulate over time."
+```
+
+## Question 2
+### b
+```{r}
+library(forecast)
+
+phi1 <- 0.35
+phi2 <- 0.45
+ar_coefs <- c(phi1, phi2)
+
+n <- 200
+set.seed(123)
+ar2_process <- arima.sim(n = n, model = list(ar = ar_coefs), sd = 1)
+
+
+plot(ar2_process, main = "AR(2) Process Simulation", ylab = "X_t", xlab = "Time")
+
+acf(ar2_process, lag.max = 20, main = "ACF of AR(2) Process")
+pacf(ar2_process, lag.max = 20, main = "PACF of AR(2) Process")
+
+```
+
+### c
+```{r}
+theta1 <- 0.45
+theta2 <- 0.55
+ma_coefs <- c(theta1, theta2)
+
+n <- 200
+set.seed(123)
+ma2_process <- arima.sim(n = n, model = list(ma = ma_coefs), sd = 1)
+
+theoretical_acf <- c(1, (theta1 + theta1*theta2)/(1 + theta1^2 + theta2^2), 
+                     theta2/(1 + theta1^2 + theta2^2))
+
+#Sample ACF
+acf_values <- acf(ma2_process, lag.max = 20, plot = FALSE)
+
+# Combined plot
+plot(acf_values, main = "Sample and Theoretical ACF for MA(2) Process", xlab = "Lag", ylab = "ACF")
+points(0:2, theoretical_acf, col = "blue", pch = 20)
+
+# Sample PACF
+pacf(ma2_process, lag.max = 20, main = "Sample PACF for MA(2) Process")
+
+```
+### d
+```{r}
+set.seed(123)
+
+#AR(2) process
+ar_coefs <- c(0.35, 0.45)
+ar2_process <- arima.sim(n = 200, model = list(ar = ar_coefs), sd = 1)
+
+#MA(2) process
+ma_coefs <- c(0.45, 0.55)
+ma2_process <- arima.sim(n = 200, model = list(ma = ma_coefs), sd = 1)
+
+# Plot ACF for AR(2) process
+acf_ar2 <- acf(ar2_process, lag.max = 20, plot = FALSE)
+
+# Plot ACF for MA(2) process
+acf_ma2 <- acf(ma2_process, lag.max = 20, plot = FALSE)
+
+#Combined ACF plot
+par(mfrow=c(2, 1))
+plot(acf_ar2, main = "Sample ACF for AR(2) Process")
+plot(acf_ma2, main = "Sample ACF for MA(2) Process")
+
+# Plot PACF for AR(2) process
+pacf_ar2 <- pacf(ar2_process, lag.max = 20, plot = FALSE)
+
+# Plot PACF for MA(2) process
+pacf_ma2 <- pacf(ma2_process, lag.max = 20, plot = FALSE)
+
+# Combined PACF plot
+par(mfrow=c(2, 1))
+plot(pacf_ar2, main = "Sample PACF for AR(2) Process")
+plot(pacf_ma2, main = "Sample PACF for MA(2) Process")
+
+```
+
+Comparison
+"Sample ACF Comparison: 
+AR(2) Process: 
+The sample ACF of an AR(2) process shows a gradual decay in correlation as the lags increase.
+MA(2) Process: 
+In contrast, the sample ACF of an MA(2) process show significant correlations at the first two lags 
+and then drop to zero or non-significant values for lags beyond the order of the MA process 
+(after lag 2 in this case)."
+
+"Sample PACF Comparison:
+AR(2) Process: 
+The sample PACF of an AR(2) process show significant correlations at the first two lags, 
+which corresponds to the order of the process. After the first two lags, the PACF drop off.
+MA(2) Process: 
+The sample PACF for an MA(2) process doesn't have a sharp cutoff like the ACF. 
+It shows a more complex and slower decay pattern as the PACF."
+
+## Question 3
+```{r}
+wine.csv <- read.table("monthly-australian-wine-sales-th.csv", 
+                       sep = ",", header = FALSE, skip = 1, nrows = 187)
+colnames(wine.csv) <- c("Month", "Sales")
+wine = ts(wine.csv$Sales, start = c(1980, 1), frequency = 12) 
+ts.plot(wine, main = "Wine Sales over Time")
+```
+
+### a
+```{r}
+wine_log <- log(wine.csv$Sales)
+
+# Plot the transformed data
+plot.ts(wine_log, main = "Log-transformed Wine Sales over Time")
+
+bc_transform <- BoxCox.lambda(wine.csv$Sales)
+wine_boxcox <- BoxCox(wine.csv$Sales, bc_transform)
+
+# Plot the Box-Cox transformed data
+plot.ts(wine_boxcox, main = "Box-Cox Transformed Wine Sales over Time")
+
+```
+
+### b
+```{r}
+
+wine_ts <- ts(wine.csv$Sales, start = c(1980, 1), frequency = 12)
+
+diff_wine_ts <- diff(wine_ts, differences = 1)
+
+plot.ts(diff_wine_ts, main = "Differenced Wine Sales over Time", 
+        ylab = "Differenced Sales", xlab = "Time")
+
+abline(h = 0, col = "red")
+
+```
+### c
+```{r}
+
+Acf(diff_wine_ts, lag.max = 60, main = "ACF of Differenced Wine Sales")
+
+Pacf(diff_wine_ts, lag.max = 60, main = "PACF of Differenced Wine Sales")
+```
+
+ACF Plot: 
+If there is still cyclic behavior or seasonality, the ACF plot shows a pattern of spikes 
+at regular intervals.
+
+PACF Plot:
+The presence of significant lags in the PACF plot suggests additional AR or seasonal AR terms 
+are needed in the model.
+
+The reason we can still see a repeating pattern in the ACF plot, even after differencing,
+due to seasonality in the data that has not been addressed by simply differencing at lag 1.
+
+
+### d
+```{r}
+
+seasonally_diff_wine_ts <- diff(diff_wine_ts, lag = 12)
+
+plot.ts(seasonally_diff_wine_ts, main = "Seasonally Differenced Wine Sales over Time", 
+        ylab = "Seasonally Differenced Sales", xlab = "Time")
+
+
+abline(h = 0, col = "red")
+
+Acf(seasonally_diff_wine_ts, lag.max = 60, main = "ACF of Seasonally Differenced Wine Sales")
+Pacf(seasonally_diff_wine_ts, lag.max = 60, main = "PACF of Seasonally Differenced Wine Sales")
+
+```
+
