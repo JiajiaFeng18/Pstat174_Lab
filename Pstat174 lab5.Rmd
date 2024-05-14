@@ -1,0 +1,159 @@
+---
+title: "Lab-Week 7"
+author: 'Jiajia Feng'
+date: ' `r Sys.Date()`'
+output: pdf_document
+---
+```{r}
+library(astsa)
+library(forecast)
+library(ggplot2)
+library(ggfortify)
+```
+## Problem 1
+### (a)
+```{r}
+tsplot(AirPassengers, main="AirPassengers Data", ylab="Number of passengers", xlab="Year")
+#Trend: Upward trend
+#Seasonality: Clear seasonality, with patterns repeating annually.
+#Stationarity: The variance increases over time,that the time series is not stationary.
+#Variance: It increases as the number of passengers increases.
+```
+### (b)
+```{r}
+decomp.data <- decompose(AirPassengers, type = "multiplicative")
+autoplot(decomp.data)
+ggseasonplot(AirPassengers, year.labels = TRUE, year.labels.left = TRUE, col = rainbow(12))
+```
+### (c)
+```{r}
+# 1
+log.data <- log(AirPassengers)
+
+# 2
+dlog.data <- diff(log.data, lag = 1)
+
+# 3
+ddlog.data <- diff(dlog.data, lag = 12)
+
+# Combine
+plot.data <- cbind(AirPassengers, log.data, dlog.data, ddlog.data)
+
+
+plot.ts(plot.data, main = "Transformations of AirPassengers Data", 
+        col = c("black", "red", "blue", "green"), ylab = "")
+legend("topright", legend = c("Original", "Log", "Differenced Log", "Seasonally Differenced Log"), 
+       col = c("black", "red", "blue", "green"), lty = 1)
+
+```
+### (d)
+```{r}
+# ACF plot
+acf(ddlog.data, main="ACF of Twice Differenced Log Data")
+#The ACF shows significant negative autocorrelation at the first lag.
+#The decay of the autocorrelations is relatively rapid, 
+#as the spikes are within the confidence interval after the first lag. 
+#Beyond the first lag, the autocorrelations are not significant since they fall 
+#within the confidence bounds.
+
+```
+```{r}
+# PACF plot
+pacf(ddlog.data, main="PACF of Twice Differenced Log Data")
+#The PACF plot shows a significant spike at the first lag.
+#All other partial autocorrelations are within the confidence interval, 
+#suggesting that additional AR terms are likely not necessary.
+#There is no obvious pattern or significant spike.
+```
+
+### (e)
+```{r}
+# Fit an ARMA(1,1) model to the twice differenced log data (ddlog.data)
+model <- sarima(ddlog.data, p = 1, d = 0, q = 1)
+
+#ACF of the residuals:
+#A significant spike at lag 1
+#The first lag is indeed outside the confidence bounds, 
+#this could imply that the model has not fully captured the autocorrelation 
+#structure of the time series data.
+#Potentially indicating that an additional MA term could be necessary.
+```
+
+### (f)
+```{r}
+# Fit Model 1:SARIMA(1,1,1)(0,1,1)12
+model1 <- sarima(ddlog.data, p = 1, d = 1, q = 1, P = 0, D = 1, Q = 1, S = 12)
+"
+-Parameter significance-
+Non-seasonal MA is  significant with a p-value < 0.05.
+Seasonal MA is significant with a p-value < 0.05.
+The AR term is significant with a p-value < 0.05.
+
+-Residual stationarity-
+Residual stationarity. The plot of standardized residuals does not show any apparent trends or patterns.
+
+-Residual ACF plot-
+The ACF plot of the residuals shows significant spikes at lag 1.
+
+-Do the standardized residuals appear to follow a Gaussian distribution?-
+The Normal Q-Q plot shows that the residuals closely follow the theoretical quantiles line, 
+suggesting a Gaussian distribution.
+
+-Ljung-Box statistic-
+The p-values are consistently lower than  0.05, 
+indicating a significant autocorrelation in the residuals.
+
+-Information Criteria-
+AIC: -3.004569 (Model 1 has the lowest AIC value)
+BIC: -2.910648 (Model 1 has a slightly lower BIC value)
+"
+
+```
+
+```{r}
+# Fit Model 2: SARIMA(0,1,1)(1,1,1)12
+model2 <- sarima(ddlog.data, p = 0, d = 1, q = 1, P = 1, D = 1, Q = 1, S = 12)
+"
+-Parameter significance-
+Non-seasonal MA is  significant with a p-value < 0.05.
+Seasonal MA is significant with a p-value < 0.05.
+The AR term is significant with a p-value < 0.05.
+
+-Residual stationarity-
+Similar to Model 1, the residuals do not exhibit any clear trends or cycles.
+
+-Residual ACF plot-
+There are no significant spikes in the ACF plot of the residuals.
+
+-Do the standardized residuals appear to follow a Gaussian distribution?-
+The Normal Q-Q plot indicates that residuals are approximately normally distributed with 
+some slight deviations in the tails.
+
+-Ljung-Box statistic-
+The p-values are consistently lower than 0.05, 
+indicating significant autocorrelation in the residuals.
+
+-Information Criteria-
+AIC: -3.018404
+BIC: -2.924482
+"
+```
+
+### (g)
+```{r}
+
+# For Model 1, SARIMA(1,1,1)(0,1,1)12 (better one):
+forecast_model1 <- sarima.for(ddlog.data, n.ahead = 24, p = 1, d = 1, q = 1, 
+                              P = 0, D = 1, Q = 1, S = 12, model = model1$fit)
+
+# For Model 2, SARIMA(0,1,1)(1,1,1)12:
+forecast_model2 <- sarima.for(ddlog.data, n.ahead = 24, p = 0, d = 1, q = 1, 
+                              P = 1, D = 1, Q = 1, S = 12, model = model2$fit)
+"Both forecasts seem to follow the historical trend and seasonality closely, 
+which implies that both models are potentially well-fitted to the data."
+
+
+```
+
+
+

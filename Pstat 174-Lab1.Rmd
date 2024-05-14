@@ -1,0 +1,228 @@
+---
+title: "Lab 1"
+author: ' Jiajia Feng'
+date: ' `r Sys.Date()`'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Problem 1
+```{r}
+#1
+#parameters
+set.seed(100)
+
+# Simulating IID noise process {Zt}
+z <- rnorm(202, mean = 0, sd = 1)
+
+# Time Series plot
+ts.plot(z, type = "l", col = "blue", 
+        xlab = "Time (t)", ylab = "Zt", 
+        main = "IID Noise Process {Zt}")
+legend("bottomright", legend = c("White Noise"), lty = c("solid"), col = c("blue"))
+
+```
+
+```{r}
+#2
+# Parameters
+set.seed(100)
+
+# Simulating IID noise process {Zt}
+z <- rnorm(202, mean = 0, sd = 1)
+
+# Calculating Xt as the moving average
+x <- rep(NA, 202)
+for(t in 2: 201){
+  x[t] <- (1/3)*(z[t-1]+z[t]+z[t+1])
+}
+
+# Time Series plot
+ts.plot(z, type = "l", col = "blue", xlab = "Time (t)", ylab = "Value", 
+        main = "IID Noise Process {Zt} and Smoothed Process {Xt}")
+lines(x, col = "red")
+legend("bottomright", 
+       legend = c("Zt (White Noise)", "Xt (Smoothed)"), 
+       col = c("blue", "red"), lty = c(1, 1))
+
+"Xt is smoother than Zt, reflecting the reduced volatility. 
+Sharp spikes in the white noise Zt are dampened in the moving 
+average Xt, providing a smoother trajectory."
+```
+
+```{r}
+#3
+# Define a function to compute theoretical ACF for Xt
+compute_theoretical_acf <- function(h) {
+  if (h == 0) {
+    return(1)
+  } else if (h == 1) {
+    return(1/3)
+  } else if (h == 2) {
+    return(1/9)
+  } else {
+    return(0)
+  }
+}
+
+# h = 0, 1, 2, ..., 20
+h_values <- 0:20
+theoretical_acf_values <- sapply(h_values, compute_theoretical_acf)
+
+
+print(theoretical_acf_values)
+
+# Plot the theoretical ACF values
+plot(h_values, theoretical_acf_values, type="b",pch = 17, col = "red", 
+     xlab="Lag (h)", ylab="Theoretical ACF", main="Theoretical ACF of {Xt}")
+
+```
+```{r}
+#4
+# Calculate the sample ACF using the acf function (without plotting)
+sample_acf_result <- acf(x, plot = FALSE, lag.max = 20, na.action = na.omit)
+
+# Theoretical ACF
+theoretical_acf <- c(1, 1/3, 1/9, rep(0, 18))
+
+
+plot(sample_acf_result$lag, sample_acf_result$acf, type = "b", pch = 19, 
+     xlab = "Lag (h)", ylab = "ACF", col = "blue", ylim = c(-0.1, 1), 
+     main = "Sample ACF and Theoretical ACF of {Xt}")
+
+lines(0:20, theoretical_acf, type = "b", pch = 17, col = "red")
+legend("topright", legend = c("Sample ACF", "Theoretical ACF"), 
+       col = c("blue", "red"), pch = c(19, 17))
+
+# The relationship between the theoretical and sample ACF
+"The sample ACF is an estimate of the true ACF and may differ due to sampling variability. 
+The theoretical ACF represents the true autocorrelation structure of the process."
+
+
+```
+
+## Problem 2
+```{r}
+#1
+# Parameters
+n <- 100
+sigma_Z <- 1  
+
+
+Zt <- rnorm(n, mean = 0, sd = sigma_Z)
+
+Xt <- rep(0, n)
+
+# Defining the MA(2) process
+for (t in 3:n) {
+  Xt[t] <- Zt[t] - 0.5*Zt[t-1] + 0.25*Zt[t-2]
+  }
+
+
+plot(Zt, type="l", col="blue", ylim=range(c(Zt, Xt)), 
+     xlab="Time (t)", ylab="Value", 
+     main="White Noise and MA(2) Process")
+
+lines(Xt, type="l", col="orange")
+legend("topright", 
+       legend=c("Zt (White Noise)", "Xt (MA(2) Process)"), 
+       col=c("blue", "orange"), lty=1)
+
+
+```
+```{r}
+#2
+
+# Calculate the ACF
+acf_values <- acf(Xt, lag.max = 20, plot = FALSE)
+acf_vals <- acf_values$acf
+
+# 95% confidence interval bounds
+n <- length(Xt)
+conf_bounds <- qnorm((1 + 0.95) / 2) / sqrt(n)
+
+# Plotting
+plot(acf_vals, type="h", lwd=2, col="blue", 
+     xlab="Lag", ylab="ACF", 
+     main="Sample ACF for MA(2) Process",
+     ylim=c(min(acf_vals), 1))
+
+
+abline(h=c(-conf_bounds, conf_bounds), col="blue", lty=2)
+
+# Adding a horizontal line at y=0
+abline(h=0, col="red", lwd=2)
+
+legend('topright', legend = c('Sample ACF', '95% CI'), col = c('blue', 'blue'), lty = c(1, 2))
+
+```
+```{r}
+#3
+"The sample ACF plot for the MA(2) process reveals that the autocorrelation 
+is notably significant for the initial two lags and then swiftly diminishes 
+to values close to zero. Such a pattern distinctly indicates that the process 
+is probably of order 2, as implied by the immediate drop in correlation after the second lag."
+```
+
+
+# Problem 3
+```{r}
+#1
+# Set the number of observations
+n <- 100
+b1 <- 0.5
+b2 <- -0.2
+
+X1 <- rep(0, n)
+X2 <- rep(0, n)
+Z <- rnorm(n, mean = 0, sd = 1)
+# Simulate the random walk process
+set.seed(100) 
+for (t in 2:n) {
+  X1[t] <- X1[t-1] + b1 + Z[t]
+  X2[t] <- X2[t-1] + b2 + Z[t]
+}
+
+plot(X1, type = 'l', col = 'blue', ylim = range(c(X1, X2)), 
+     ylab = 'Xt', xlab = 'Time (t)', 
+     main = 'Random Walk with Drift')
+lines(X2, type = 'l', col = 'red')
+legend('topright', legend = c('b = 0.5', 'b = -0.2'), 
+       col = c('blue', 'red'), lty = 1)
+
+```
+```{r}
+#2
+n <- 100
+b1 <- 0.5
+b2 <- -0.2
+
+X1 <- rep(0, n)
+X2 <- rep(0, n)
+Z <- rnorm(n, mean = 0, sd = 1)
+# Simulate the random walk process
+set.seed(100) 
+for (t in 2:n) {
+  X1[t] <- X1[t-1] + b1 + Z[t]
+  X2[t] <- X2[t-1] + b2 + Z[t]
+}
+
+plot(X1, type = 'l', col = 'blue', ylim = range(c(X1, X2)), 
+     ylab = 'Xt', xlab = 'Time (t)', 
+     main = 'Random Walk with Drift')
+lines(X2, type = 'l', col = 'red')
+
+abline(a = 0, b = b1, col = "blue", lty = 2)
+abline(a = 0, b = b2, col = "red", lty = 2)
+
+legend("topright", legend = c("b = 0.5", "Drift Line y = 0.5t", 
+                              "b = -0.2", "Drift Line y = -0.2t"),
+       col = c("blue", "blue", "red", "red"), lty = c(1, 2, 1, 2))
+
+"I can observe that the random walk with a positive drift tends to 
+increase over time, while the one with a negative drift tends to decrease."
+```
+
