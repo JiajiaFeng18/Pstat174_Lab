@@ -1,0 +1,158 @@
+---
+title: "Lab 3"
+author: 'Jiajia Feng'
+date: ' `r Sys.Date()`'
+output: pdf_document
+---
+```{r}
+library(astsa)
+library(forecast)
+```
+
+## Problem 1
+
+### (a)
+```{r}
+plot(gnp, main="GNP Time Series", xlab="Time", ylab="GNP")
+"In this plot, the GNP is clearly increasing over time, indicating a trend in the data. 
+The variance also appears to be increasing as the level of GNP rises, 
+which is another sign of non-stationarity."
+```
+### (b)
+```{r}
+log_diff_gnp <- diff(log(gnp))
+plot(log_diff_gnp, main="Log Differences of GNP Time Series", xlab="Time", ylab="Log Difference of GNP")
+```
+
+### (c)
+```{r}
+library(astsa)
+acf2(log_diff_gnp)
+```
+
+### (d)
+```{r}
+library(forecast)
+ma.model <- Arima(log_diff_gnp, order=c(0,0,2))
+summary(ma.model)
+```
+### (e)
+```{r}
+residuals <- ma.model$residuals
+plot(residuals, main="Residuals of MA(2) Model", ylab="Residuals", xlab="Time")
+abline(h=0, col="red")
+Acf(residuals, main="ACF of Residuals")
+"The absence of patterns in the residuals and the lack of significant autocorrelation 
+in the ACF plot collectively suggest that the MA(2) model is a good fit for the data."
+```
+### (f)
+```{r}
+ar.model <- Arima(log_diff_gnp, order=c(1,0,0)) # AR(1) model
+summary(ar.model)
+```
+```{r}
+plot(ar.model$residuals, main="Residuals of AR(1) Model", ylab="Residual", xlab="Time")
+abline(h=0, col="blue", lty=2)
+Acf(ar.model$residuals, main="ACF of Residuals for AR(1) Model", lag.max=20)
+
+```
+
+### (g)
+```{r}
+plot(log_diff_gnp, main="Log Differenced GNP with Fitted Models", 
+     ylab="Log Differenced GNP", xlab="Time")
+lines(ma.model$fitted, col="red")
+lines(ar.model$fitted, col="blue")
+legend("topright", legend=c("MA(2) Fitted", "AR(1) Fitted"), col=c("red", "blue"), lty=1)
+
+```
+
+## Problem2
+
+### (a)
+```{r}
+library(astsa)
+data(xglobtemp)
+plot(xglobtemp, main="Global Temperature Time Series", xlab="Year", ylab="Temperature")
+"The data does not appear to be stationary due to the following reasons:"
+"Trend: There is a clear upward trend over time. The temperature is increasing, 
+which indicates that the mean of the series is not constant.
+Variance: The increasing trend might suggest that the variance could be changing as well, 
+particularly if the rate of increase is not constant."
+
+"Seasonal Trend:
+The plot does not immediately suggest a strong seasonal component; 
+the fluctuations appear irregular rather than systematic throughout the series. "
+"Removing Seasonal Trend: 
+If there's an underlying seasonal trend not visible in the current plot, 
+apply seasonal differencing, which involves subtracting the observation from the same season 
+in the previous cycle."
+```
+### (b)
+```{r}
+# Assuming xglobtemp is your global temperature time series data
+diff_xglobtemp <- diff(xglobtemp, differences = 1)
+
+# Producing a time series plot of the differenced data
+plot(diff_xglobtemp, main="Differenced Global Temperature Time Series", xlab="Year", ylab="Differenced Temperature")
+"The data appears to be stationary.
+The mean seems to fluctuate along temperature 0.0, which indicates stationarity.
+There are no obvious periods of high or low variability, 
+which indicates stationarity in terms of variance.
+There is no evident seasonal pattern in the differenced data from the plot provided. 
+"
+```
+
+### (c)
+```{r}
+library(astsa)
+log_xglobtemp <- log(xglobtemp)
+log_diff_xglobtemp <- diff(log_xglobtemp) 
+
+acf2(log_diff_xglobtemp)
+
+```
+```{r}
+"
+ACF Observations:
+The ACF shows that there are a few lags that are outside the confidence bounds, notably the first lag. 
+However, the autocorrelations quickly fall within the bounds and become insignificant. 
+This initial spike suggests some level of autocorrelation that may need to be 
+accounted for by an MA term.
+PACF Observations:
+The PACF plot shows a significant spike at the first lag and then the correlations 
+taper off into the confidence bounds. 
+This suggests a possible AR(1) component as the most significant predictor, 
+with subsequent lags being statistically insignificant."
+"Potential ARIMA Model:
+The ACF and PACF plots suggest that an ARIMA(1,1,1) model may be appropriate for the 
+log-differenced data. 
+This model includes one autoregressive term, one order of differencing 
+(which has already been applied to make the data stationary), and one moving average term."
+```
+
+### (d)
+```{r}
+library(astsa)
+sarima_model <- sarima(log_diff_xglobtemp, 1, 1, 1)
+```
+
+### (e)
+```{r}
+library(astsa)
+fit <- sarima(xglobtemp, 1, 1, 1)
+"Standardized Residuals Plot: 
+The residuals here seem to be fluctuating around zero without any clear pattern, which is good.
+"
+"ACF of Residuals Plot:
+All the autocorrelation bars are within the confidence bounds, 
+suggesting that the residuals are white noise."
+
+"Normal Q-Q Plot of Standardized Residuals:
+The points generally follow the line, but with some deviation at the ends. 
+This is fairly common and might not be a problem, 
+but it indicates that the residuals have heavier tails than a normal distribution."
+"P-values for Ljung-Box Statistic:
+All p-values are high, which suggests that there is no significant autocorrelation in the residuals."
+```
+
